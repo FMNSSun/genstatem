@@ -90,7 +90,7 @@ for this event in the current state. If there's an error in a callback (such as 
 abort and return that error. 
 
 The tool will also generate constants `Event*` and `State*` for each event and state. To access the current state of the
-state machine use `sm.State()` which has type `func() State`. It also generates a `SetState(state State, invokeOn bool) error`
-method and a `SetIface(iface Iface)` method (if `iface` is used). 
+state machine use `sm.State()` which has type `func() State`. It also generates a `SetState(state State, event Event, invokeOn bool) error`
+method and a `SetIface(iface Iface)` method (if `iface` is used). The special constant `NoEvent` may be used for invalid events. 
 
 For a working example see the `example/` and `example2/` directories.
