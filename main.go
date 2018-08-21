@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"flag"
-	"io/ioutil"
-	"encoding/json"
 	"bytes"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io/ioutil"
 	"strings"
 )
 
@@ -31,7 +31,7 @@ type State struct {
 
 	// Function to execute whenever a transition to this state happens.
 	// It's type must be func(event Event, state State) error.
-	On   string
+	On string
 
 	// State transitions
 	Transitions []*Transition
@@ -42,7 +42,7 @@ type Transition struct {
 	Event string
 
 	// State to transition to should the specified event occur
-	To    string
+	To string
 
 	// Function to execute before the state is switched to the target state.
 	// It's type must be func(event Event, state State) error.
@@ -56,7 +56,7 @@ type Transition struct {
 func main() {
 	inputFile := flag.String("in", "desc.json", "Path to input file.")
 	outputFile := flag.String("out", "statemachine.go", "Path to output file.")
-	pkg := flag.String("package","main", "Package name (used in the `package ...` statement).")
+	pkg := flag.String("package", "main", "Package name (used in the `package ...` statement).")
 
 	flag.Parse()
 
@@ -148,6 +148,10 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 		}
 	}
 
+	if statesMap[desc.Init] == nil {
+		panic(fmt.Sprintf("Init state `%s` does not exist.", desc.Init))
+	}
+
 	if desc.Iface != "" {
 		writef(buf, "// SetIface sets the internal state of the state machine.\n")
 		writef(buf, "func (sm *%s) SetIface(iface %s) {\n", desc.Name, desc.Iface)
@@ -166,11 +170,11 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 	writef(buf, "\tsm.state = state\n")
 	writef(buf, "\tif invokeOn {\n")
 	writef(buf, "\t\tswitch state {\n")
-	
+
 	for _, state := range statesMap {
 		if state.On != "" {
 			writef(buf, "\t\tcase %q:\n", state.Name)
-			
+
 			ifaceStr := ""
 
 			if desc.Iface != "" {
@@ -210,7 +214,7 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 
 	for _, state := range statesMap {
 		writef(buf, "\tcase %q:\n", state.Name)
-		
+
 		writef(buf, "\t\tswitch event {\n")
 
 		for _, transition := range state.Transitions {
@@ -247,7 +251,7 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 				targetState := statesMap[transition.To]
 
 				if targetState == nil {
-					panic(fmt.Sprintf("Target state in transition from state `%s` to `%s` on event `%s` does not exist.", 
+					panic(fmt.Sprintf("Target state in transition from state `%s` to `%s` on event `%s` does not exist.",
 						state.Name, transition.To, transition.Event))
 				}
 
