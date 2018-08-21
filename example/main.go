@@ -20,13 +20,13 @@ func Foo(event Event, state State) {
 func main() {
 	sm := NewStateMachine()
 
-	err := sm.Event("start")
+	err := sm.Event(EventStart)
 
 	if err != nil {
 		panic(err.Error())
 	}
 
-	err = sm.Event("stop")
+	err = sm.Event(EventStop)
 
 	if err != nil {
 		panic(err.Error())
