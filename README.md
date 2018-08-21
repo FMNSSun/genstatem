@@ -20,7 +20,8 @@ is described using a simple JSON structure.
        ]}
   ], 
  "init":"idle",
- "name":"StateMachine"}
+ "name":"StateMachine",
+ "iface":""}
 ```
 
 ### states
@@ -47,12 +48,13 @@ The name of the event.
 #### states.transitions.to
 
 Name of the target state. If the specified event occurs the state machine will transition
-into the target state.
+into the target state. This may be left empty if no transition shall occur. 
 
 #### states.transitions.action
 
 Name of the function to be executed whenever this transition occurs. The function is called
-before the state is updated. The type of the function must be `func(e Event, s State)`.
+before the state is updated. The type of the function must be `func(e Event, s State)`. This
+may be left empty if no function should be executed.
 
 ### init
 
@@ -62,6 +64,11 @@ The initial state.
 
 The name of the state machine. This will also be used as the name of the type of the state machine in the
 generated code. 
+
+### iface
+
+When `iface` is not empty the state machine will have an internal state of this type. All callbacks
+will be invoked on the internal state. 
 
 ## Using the generated code
 
@@ -84,4 +91,4 @@ for this event in the current state.
 The tool will also generate constants `Event*` and `State*` for each event and state. To access the current state of the
 state machine use `sm.State()` which has type `func() State`. 
 
-For a working example see the `example/` directory.
+For a working example see the `example/` and `example2/` directories.

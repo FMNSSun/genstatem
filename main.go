@@ -20,6 +20,9 @@ type Description struct {
 
 	// The initial state
 	Init string
+
+	// Iface
+	Iface string
 }
 
 type State struct {
@@ -96,6 +99,11 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 	writef(buf, "type %s struct {\n", desc.Name)
 	writef(buf, "\tstate State\n")
 	writef(buf, "\tmu *sync.RWMutex\n")
+
+	if desc.Iface != "" {
+		writef(buf, "\tiface %s\n", desc.Iface)
+	}
+
 	writef(buf, "}\n\n")
 	writef(buf, "func (sm *%s) State() State {\n", desc.Name)
 	writef(buf, "\tsm.mu.RLock()\n")
@@ -150,21 +158,35 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 		writef(buf, "\t\tswitch event {\n")
 
 		for _, transition := range state.Transitions {
+			writef(buf, "\t\tcase %q:\n", transition.Event)
 
-			targetState := statesMap[transition.To]
-
-			if targetState == nil {
-				panic(fmt.Sprintf("Target state in transition from state `%s` to `%s` on event `%s` does not exist.", 
-					state.Name, transition.To, transition.Event))
+			if transition.Action != "" {
+				if desc.Iface == "" {
+					writef(buf, "\t\t\t%s(event, sm.state)\n", transition.Action)
+				} else {
+					writef(buf, "\t\t\tsm.iface.%s(event, sm.state)\n", transition.Action)
+				}
 			}
 
-			writef(buf, "\t\tcase %q:\n", transition.Event)
-			writef(buf, "\t\t\t%s(event, sm.state)\n", transition.Action)
-			writef(buf, "\t\t\tsm.state = %q\n", transition.To)
+			// but only if there's a target state defined
+			if transition.To != "" {
+				targetState := statesMap[transition.To]
 
-			// Does the target state have an on?
-			if targetState.On != "" {
-				writef(buf, "\t\t\t%s(event, sm.state)\n", targetState.On)
+				if targetState == nil {
+					panic(fmt.Sprintf("Target state in transition from state `%s` to `%s` on event `%s` does not exist.", 
+						state.Name, transition.To, transition.Event))
+				}
+
+				writef(buf, "\t\t\tsm.state = %q\n", transition.To)
+
+				// Does the target state have an on?
+				if targetState.On != "" {
+					if desc.Iface == "" {
+						writef(buf, "\t\t\t%s(event, sm.state)\n", targetState.On)
+					} else {
+						writef(buf, "\t\t\tsm.iface.%s(event, sm.state)\n", targetState.On)
+					}
+				}
 			}
 		}
 
@@ -178,7 +200,13 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 	writef(buf, "\treturn nil\n")
 	writef(buf, "}\n\n")
 
-	writef(buf, "func New%s() *%s{\n", desc.Name, desc.Name)
-	writef(buf, "\treturn &%s{state:%q, mu: &sync.RWMutex{}}\n", desc.Name, desc.Init)
-	writef(buf, "}\n\n")
+	if desc.Iface == "" {
+		writef(buf, "func New%s() *%s{\n", desc.Name, desc.Name)
+		writef(buf, "\treturn &%s{state:%q, mu: &sync.RWMutex{}}\n", desc.Name, desc.Init)
+		writef(buf, "}\n\n")
+	} else {
+		writef(buf, "func New%s(iface %s) *%s{\n", desc.Name, desc.Iface, desc.Name)
+		writef(buf, "\treturn &%s{state:%q, mu: &sync.RWMutex{}, iface: iface}\n", desc.Name, desc.Init)
+		writef(buf, "}\n\n")
+	}
 }
