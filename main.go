@@ -94,8 +94,11 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 	writef(buf, "import \"fmt\"\n")
 	writef(buf, "import \"errors\"\n")
 	writef(buf, "import \"sync\"\n\n")
-	writef(buf, "type Event string\n")
-	writef(buf, "type State string\n")
+	writef(buf, "// An Event is an 'Event' that can occur.\n")
+	writef(buf, "type Event string\n\n")
+	writef(buf, "// A State is a 'State' a state machine can be in.\n")
+	writef(buf, "type State string\n\n")
+	writef(buf, "// %s is a state machine.\n", desc.Name)
 	writef(buf, "type %s struct {\n", desc.Name)
 	writef(buf, "\tstate State\n")
 	writef(buf, "\tmu *sync.RWMutex\n")
@@ -105,6 +108,8 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 	}
 
 	writef(buf, "}\n\n")
+
+	writef(buf, "// State returns the state the state machine is in.\n")
 	writef(buf, "func (sm *%s) State() State {\n", desc.Name)
 	writef(buf, "\tsm.mu.RLock()\n")
 	writef(buf, "\tdefer sm.mu.RUnlock()\n\n")
@@ -137,6 +142,47 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 		}
 	}
 
+	if desc.Iface != "" {
+		writef(buf, "// SetIface sets the internal state of the state machine.\n")
+		writef(buf, "func (sm *%s) SetIface(iface %s) {\n", desc.Name, desc.Iface)
+		writef(buf, "\tsm.mu.Lock()\n")
+		writef(buf, "\tdefer sm.mu.Unlock()\n")
+		writef(buf, "\tsm.iface = iface\n")
+		writef(buf, "}\n\n")
+	}
+
+	writef(buf, "// SetState sets the statet of the state machine. If invokeOn\n")
+	writef(buf, "// is true then it'll also invoke the 'on' function for that state.\n")
+	writef(buf, "// The parameter event is passed as the event parameter to the 'on' function.\n")
+	writef(buf, "func (sm *%s) SetState(state State, event Event, invokeOn bool) error {\n", desc.Name)
+	writef(buf, "\tsm.mu.Lock()\n")
+	writef(buf, "\tdefer sm.mu.Unlock()\n")
+	writef(buf, "\tsm.state = state\n")
+	writef(buf, "\tif invokeOn {\n")
+	writef(buf, "\t\tswitch state {\n")
+	
+	for _, state := range statesMap {
+		if state.On != "" {
+			writef(buf, "\t\tcase %q:\n", state.Name)
+			
+			ifaceStr := ""
+
+			if desc.Iface != "" {
+				ifaceStr = "sm.iface."
+			}
+
+			writef(buf, "\t\t\tif err := %s%s(event, sm.state); err != nil {\n", ifaceStr, state.On)
+			writef(buf, "\t\t\t\treturn err\n")
+			writef(buf, "\t\t\t}\n")
+		}
+	}
+
+	writef(buf, "\t\t}\n")
+
+	writef(buf, "\t}\n\n")
+	writef(buf, "\treturn nil\n")
+	writef(buf, "}\n\n")
+
 	for _, state := range statesMap {
 		writef(buf, "const State%s = %q\n", camel(state.Name), state.Name)
 	}
@@ -144,9 +190,13 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 	for k, _ := range eventsMap {
 		writef(buf, "const Event%s = %q\n", camel(k), k)
 	}
+	writef(buf, "const NoEvent = \"\"\n")
 
 	writef(buf, "\n\n")
 
+	writef(buf, "// Event informs the state machine about an occured 'Event'. The state\n")
+	writef(buf, "// machine will then transition into the correct target state and invoke the\n")
+	writef(buf, "// registered callbacks.\n")
 	writef(buf, "func (sm *%s) Event(event Event) error {\n", desc.Name)
 	writef(buf, "\tsm.mu.Lock()\n")
 	writef(buf, "\tdefer sm.mu.Unlock()\n\n")
@@ -161,11 +211,15 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 			writef(buf, "\t\tcase %q:\n", transition.Event)
 
 			if transition.Action != "" {
-				if desc.Iface == "" {
-					writef(buf, "\t\t\t%s(event, sm.state)\n", transition.Action)
-				} else {
-					writef(buf, "\t\t\tsm.iface.%s(event, sm.state)\n", transition.Action)
+				ifaceStr := ""
+
+				if desc.Iface != "" {
+					ifaceStr = "sm.iface."
 				}
+
+				writef(buf, "\t\t\tif err := %s%s(event, sm.state); err != nil {\n", ifaceStr, transition.Action)
+				writef(buf, "\t\t\t\treturn err\n")
+				writef(buf, "\t\t\t}\n")
 			}
 
 			// but only if there's a target state defined
@@ -181,11 +235,15 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 
 				// Does the target state have an on?
 				if targetState.On != "" {
-					if desc.Iface == "" {
-						writef(buf, "\t\t\t%s(event, sm.state)\n", targetState.On)
-					} else {
-						writef(buf, "\t\t\tsm.iface.%s(event, sm.state)\n", targetState.On)
+					ifaceStr := ""
+
+					if desc.Iface != "" {
+						ifaceStr = "sm.iface."
 					}
+
+					writef(buf, "\t\t\tif err := %s%s(event, sm.state); err != nil {\n", ifaceStr, targetState.On)
+					writef(buf, "\t\t\t\treturn err\n")
+					writef(buf, "\t\t\t}\n")
 				}
 			}
 		}
@@ -201,10 +259,12 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 	writef(buf, "}\n\n")
 
 	if desc.Iface == "" {
+		writef(buf, "// New%s() creates a new state machine.\n", desc.Name)
 		writef(buf, "func New%s() *%s{\n", desc.Name, desc.Name)
 		writef(buf, "\treturn &%s{state:%q, mu: &sync.RWMutex{}}\n", desc.Name, desc.Init)
 		writef(buf, "}\n\n")
 	} else {
+		writef(buf, "// New%s creates a new state machine.\n", desc.Name)
 		writef(buf, "func New%s(iface %s) *%s{\n", desc.Name, desc.Iface, desc.Name)
 		writef(buf, "\treturn &%s{state:%q, mu: &sync.RWMutex{}, iface: iface}\n", desc.Name, desc.Init)
 		writef(buf, "}\n\n")

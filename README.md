@@ -35,7 +35,7 @@ Name of the state.
 #### states.on
 
 Name of the function to be executed whenever a transition into this state occurse.
-The type of the function must be `func(e Event, s State)`.
+The type of the function must be `func(e Event, s State) error`.
 
 #### states.transitions
 
@@ -53,7 +53,7 @@ into the target state. This may be left empty if no transition shall occur.
 #### states.transitions.action
 
 Name of the function to be executed whenever this transition occurs. The function is called
-before the state is updated. The type of the function must be `func(e Event, s State)`. This
+before the state is updated. The type of the function must be `func(e Event, s State) error`. This
 may be left empty if no function should be executed.
 
 ### init
@@ -86,9 +86,11 @@ if err != nil {
 ```
 
 The `Event` function has the type `func(e Event) error`. It may return an error if there's no transition registered 
-for this event in the current state. 
+for this event in the current state. If there's an error in a callback (such as `action` or `on`) then `Event` will
+abort and return that error. 
 
 The tool will also generate constants `Event*` and `State*` for each event and state. To access the current state of the
-state machine use `sm.State()` which has type `func() State`. 
+state machine use `sm.State()` which has type `func() State`. It also generates a `SetState(state State, invokeOn bool) error`
+method and a `SetIface(iface Iface)` method (if `iface` is used). 
 
 For a working example see the `example/` and `example2/` directories.

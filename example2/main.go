@@ -6,25 +6,28 @@ package main
 import "fmt"
 
 type InternalState interface {
-	Signal(e Event, s State)
-	Start(e Event, s State)
-	Dump(e Event, s State)
+	Signal(e Event, s State) error
+	Start(e Event, s State) error
+	Dump(e Event, s State) error
 }
 
 type internalState struct {
 	counter int
 }
 
-func (is *internalState) Signal(e Event, s State) {
+func (is *internalState) Signal(e Event, s State) error {
 	is.counter++
+	return nil
 }
 
-func (is *internalState) Start(e Event, s State) {
+func (is *internalState) Start(e Event, s State) error {
 	is.counter = 0
+	return nil
 }
 
-func (is *internalState) Dump(e Event, s State) {
+func (is *internalState) Dump(e Event, s State) error {
 	fmt.Printf("Counter := %d\n", is.counter)
+	return nil
 }
 
 func main() {
