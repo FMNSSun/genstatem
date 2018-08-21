@@ -1,0 +1,15 @@
+{"states":
+  [
+    {"name":"idle", "on":"InIdle",
+     "transitions": 
+       [
+         {"event":"start","to":"running","action":"Foo"}
+       ]},
+    {"name":"running", "on":"InRunning",
+     "transitions":
+       [
+         {"event":"stop","to":"idle","action":"Foo"}
+       ]}
+  ], 
+ "init":"idle",
+ "name":"StateMachine"}
