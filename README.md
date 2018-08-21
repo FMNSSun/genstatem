@@ -99,4 +99,4 @@ The tool will also generate constants `Event*` and `State*` for each event and s
 state machine use `sm.State()` which has type `func() State`. It also generates a `SetState(state State, event Event, invokeOn bool) error`
 method and a `SetIface(iface Iface)` method (if `iface` is used). The special constant `NoEvent` may be used for invalid events. 
 
-For a working example see the `example/` and `example2/` directories.
+For a working example see the `example/`, `example2/` and `example3/` directories.
