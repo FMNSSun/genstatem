@@ -83,3 +83,5 @@ for this event in the current state.
 
 The tool will also generate constants `Event*` and `State*` for each event and state. To access the current state of the
 state machine use `sm.State()` which has type `func() State`. 
+
+For a working example see the `example/` directory.
