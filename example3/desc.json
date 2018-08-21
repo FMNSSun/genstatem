@@ -1,0 +1,17 @@
+{"states":
+  [
+    {"name":"idle",
+     "transitions": 
+       [
+         {"event":"start","to":"running","action":"Start"}
+       ]},
+    {"name":"running",
+     "transitions":
+       [
+         {"event":"stop","to":"idle","action":"Dump"},
+         {"event":"signal","action":"Signal","condition":"Foobar"}
+       ]}
+  ], 
+ "init":"idle",
+ "name":"StateMachine",
+ "iface":"InternalState"}

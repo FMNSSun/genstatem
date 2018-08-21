@@ -56,6 +56,12 @@ Name of the function to be executed whenever this transition occurs. The functio
 before the state is updated. The type of the function must be `func(e Event, s State) error`. This
 may be left empty if no function should be executed.
 
+#### states.transitions.condition
+
+Name of a function to be executed to check whether the transition should happen or not. The type
+of the function must be `func(e Event, s State) (bool, error)`. If this function returns false
+then `action` doesn't happen and no state transition happens. 
+
 ### init
 
 The initial state. 
@@ -86,7 +92,7 @@ if err != nil {
 ```
 
 The `Event` function has the type `func(e Event) error`. It may return an error if there's no transition registered 
-for this event in the current state. If there's an error in a callback (such as `action` or `on`) then `Event` will
+for this event in the current state. If there's an error in a callback (such as `action`, `condition` or `on`) then `Event` will
 abort and return that error. 
 
 The tool will also generate constants `Event*` and `State*` for each event and state. To access the current state of the

@@ -30,6 +30,7 @@ type State struct {
 	Name string
 
 	// Function to execute whenever a transition to this state happens.
+	// It's type must be func(event Event, state State) error.
 	On   string
 
 	// State transitions
@@ -44,7 +45,12 @@ type Transition struct {
 	To    string
 
 	// Function to execute before the state is switched to the target state.
+	// It's type must be func(event Event, state State) error.
 	Action string
+
+	// Function to execute to check whether a transition should occur or not.
+	// It's type must be func(event Event, state State) (bool, error)
+	Condition string
 }
 
 func main() {
@@ -151,7 +157,7 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 		writef(buf, "}\n\n")
 	}
 
-	writef(buf, "// SetState sets the statet of the state machine. If invokeOn\n")
+	writef(buf, "// SetState sets the state of the state machine. If invokeOn\n")
 	writef(buf, "// is true then it'll also invoke the 'on' function for that state.\n")
 	writef(buf, "// The parameter event is passed as the event parameter to the 'on' function.\n")
 	writef(buf, "func (sm *%s) SetState(state State, event Event, invokeOn bool) error {\n", desc.Name)
@@ -210,6 +216,18 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 		for _, transition := range state.Transitions {
 			writef(buf, "\t\tcase %q:\n", transition.Event)
 
+			if transition.Condition != "" {
+				ifaceStr := ""
+
+				if desc.Iface != "" {
+					ifaceStr = "sm.iface."
+				}
+
+				writef(buf, "\t\t\tif ok, err := %s%s(event, sm.state); true {\n", ifaceStr, transition.Condition)
+				writef(buf, "\t\t\tif err != nil { return err }\n")
+				writef(buf, "\t\t\tif ok{\n")
+			}
+
 			if transition.Action != "" {
 				ifaceStr := ""
 
@@ -224,6 +242,8 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 
 			// but only if there's a target state defined
 			if transition.To != "" {
+				// is there a condition registered?
+
 				targetState := statesMap[transition.To]
 
 				if targetState == nil {
@@ -245,6 +265,10 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 					writef(buf, "\t\t\t\treturn err\n")
 					writef(buf, "\t\t\t}\n")
 				}
+			}
+
+			if transition.Condition != "" {
+				writef(buf, "\t\t\t}}\n")
 			}
 		}
 
