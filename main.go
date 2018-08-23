@@ -277,7 +277,7 @@ func compile(desc *Description, pkg string, buf *bytes.Buffer) {
 		}
 
 		writef(buf, "\t\tdefault:\n")
-		writef(buf, "\t\t\treturn errors.New(%s)\n", "fmt.Sprintf(\"Event `%s` is not valid during state `%s`, event, sm.state\")")
+		writef(buf, "\t\t\treturn errors.New(%s)\n", "fmt.Sprintf(\"Event `%s` is not valid during state `%s`\", event, sm.state)")
 
 		writef(buf, "\t\t}\n")
 	}
